@@ -1,0 +1,41 @@
+services: 
+  # a basic Postgres container just holding the data
+  db:           
+    image: postgres
+    restart: always
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: username_test
+      POSTGRES_PASSWORD: password_test
+      POSTGRES_DB: SREALITY
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+  # an image that parses the Sreality data and stores them in the database    
+  crawler:      
+    build:
+      context: crawler
+    depends_on:
+      db:
+        condition: service_healthy
+  # an image of the WEB server responding with data loaded from the database
+  web:         
+    build:
+      context: webserver
+      target: builder
+    ports: 
+      - '8080:80'
+    depends_on:
+      db:
+        condition: service_healthy
+  # a basic SQL Adminer container to visually see the database contents 
+  adminer: 
+    image: adminer
+    restart: always
+    ports:
+      - 8081:8080
+    depends_on:
+      - db
